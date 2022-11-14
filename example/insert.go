@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -57,8 +58,10 @@ func InsertOneByMap(ctx context.Context, db *mongo.Database) (string, error) {
 	c := db.Collection("yyxtest")
 	//使用map
 	iresult, err := c.InsertOne(ctx, map[string]interface{}{
-		"name": "yyx",
-		"type": "map",
+		"name":    "yyx",
+		"type":    "map",
+		"hasTime": true,
+		"time":    time.Now(),
 	})
 	if err != nil {
 		return "", err
