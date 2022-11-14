@@ -1,7 +1,9 @@
 package example
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -9,6 +11,23 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+func PrettyPrint(v interface{}) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		fmt.Println(v)
+		return
+	}
+
+	var out bytes.Buffer
+	err = json.Indent(&out, b, "", "  ")
+	if err != nil {
+		fmt.Println(v)
+		return
+	}
+
+	fmt.Println(out.String())
+}
 
 func QueryOneByM(ctx context.Context, db *mongo.Database) error {
 	/*
@@ -163,5 +182,112 @@ func QueryOneByNothingMulSort(ctx context.Context, db *mongo.Database) error {
 	var data map[string]interface{}
 	err := result.Decode(&data)
 	fmt.Println(data)
+	return err
+}
+
+func QueryByIn(ctx context.Context, db *mongo.Database) error {
+	/*
+		in 查询, name 为 ["yyx", "zhangsan"]
+	*/
+	c := db.Collection("yyxtest")
+	result, err := c.Find(ctx, bson.M{
+		"name": bson.M{"$in": []string{"yyx", "zhangsan"}},
+	})
+	if err != nil {
+		return err
+	}
+	var data []bson.M
+	err = result.All(ctx, &data)
+	fmt.Println(data)
+	return err
+}
+
+func QueryByOr(ctx context.Context, db *mongo.Database) error {
+	/*
+		or 查询, or 查询的条件为一个array, 所以需要使用bson.A
+	*/
+	c := db.Collection("yyxtest")
+	result, err := c.Find(ctx, bson.M{
+		"$or": bson.A{
+			bson.M{"name": "yyx"},
+			bson.M{"Bname": "yyy"},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	var data []bson.M
+	err = result.All(ctx, &data)
+	fmt.Println(data)
+	return err
+}
+
+func QueryByAnd(ctx context.Context, db *mongo.Database) error {
+	/*
+		and 查询, and 查询的条件为一个array, 所以需要使用bson.A
+		使用and 意义不大
+	*/
+	c := db.Collection("yyxtest")
+	result, err := c.Find(ctx, bson.M{
+		"$and": bson.A{
+			bson.M{"name": "lisi"},
+			bson.M{"age": 20},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	var data []bson.M
+	err = result.All(ctx, &data)
+	fmt.Println(data)
+	return err
+}
+
+func QueryByRange(ctx context.Context, db *mongo.Database) error {
+	/*
+		范围查询，
+		查询年龄在18-20的
+	*/
+	c := db.Collection("yyxtest")
+	option := options.FindOptions{
+		Projection: bson.M{
+			"age": 1,
+		},
+	}
+	filter := bson.M{"age": bson.M{"$gte": 18, "$lte": 20}}
+	result, err := c.Find(ctx, filter, &option)
+	if err != nil {
+		return err
+	}
+	var data []bson.M
+	err = result.All(ctx, &data)
+	PrettyPrint(data)
+	return err
+}
+
+func QueryByRangeOr(ctx context.Context, db *mongo.Database) error {
+	/*
+		范围查询，
+		多个查询条件
+	*/
+	c := db.Collection("yyxtest")
+	option := options.FindOptions{
+		Projection: bson.M{
+			"age": 1,
+		},
+	}
+	filter := bson.M{
+		"$or": bson.A{
+			bson.M{"age": bson.M{"$gte": 18, "$lte": 20}},
+			bson.M{"time": bson.M{"$lte": time.Now()}},
+		},
+	}
+	result, err := c.Find(ctx, filter, &option)
+	if err != nil {
+		return err
+	}
+	var data []bson.M
+	err = result.All(ctx, &data)
+	PrettyPrint(data)
 	return err
 }
